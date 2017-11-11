@@ -189,7 +189,7 @@ test_expect_success 'extra commits to get multiple merge bases merged in other' 
 	git merge -m "merge HASH9 and SIDE_HASH9" "$SIDE_HASH9" &&
 	HASH10=$(git rev-parse --verify HEAD) &&
 	git checkout "$SIDE_HASH9" &&
-	add_line_into_file "8: last line in main branch" hello &&
+	add_line_into_file "S10: last line in main branch" hello2 &&
 	SIDE_HASH10=$(git rev-parse --verify HEAD)
 '
 
@@ -207,8 +207,37 @@ test_expect_success 'good merge base when S10 is bad and H10 is good' '
 	git bisect reset
 '
 
+# This adds some more commits to have multiple merge bases
+# "crossing"
+#
+# H1-H2-H3-H4-H5-H6-H7-H8-H9-H10-H11-H12  <--other
+#            \           /  /   X
+#             S5-S6-S7-S8-S9-S10-S11-S12  <--side
+test_expect_success 'extra commits to get multiple merge bases merged in other' '
+	git checkout "$SIDE_HASH10" &&
+	git merge -m "merge HASH10 and SIDE_HASH10" "$HASH10" &&
+	SIDE_HASH11=$(git rev-parse --verify HEAD) &&
+	git checkout "$HASH10" &&
+	git merge -m "merge HASH10 and SIDE_HASH10" "$SIDE_HASH10" &&
+	HASH11=$(git rev-parse --verify HEAD) &&
+	add_line_into_file "12: last line in main branch" hello &&
+	HASH12=$(git rev-parse --verify HEAD) &&
+	git checkout "$SIDE_HASH11" &&
+	add_line_into_file "S12: last line in main branch" hello2 &&
+	SIDE_HASH12=$(git rev-parse --verify HEAD)
+'
 
-
+test_expect_success 'good merge base when S12 is good and H12 is bad' '
+  git bisect start "$HASH12" "$SIDE_HASH12" > my_bisect_log.txt &&
+  test_i18ngrep "merge base must be tested" my_bisect_log.txt &&
+  grep $SIDE_HASH10 my_bisect_log.txt &&
+  git bisect good "$SIDE_HASH10" > my_bisect_log.txt &&
+  test_i18ngrep "merge base must be tested" my_bisect_log.txt &&
+  grep $HASH10 my_bisect_log.txt &&
+  git bisect good "$HASH10" > my_bisect_log.txt &&
+  test_i18ngrep "merge base must be tested" my_bisect_log.txt &&
+  git bisect reset
+'
 
 # This creates a few more commits (A and B) to test "siblings" cases
 # when a good and a bad rev have many merge bases.
