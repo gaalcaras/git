@@ -156,6 +156,7 @@ test_expect_success 'extra commits to get multiple merge bases' '
 	HASH8=$(git rev-parse --verify HEAD) &&
 	git checkout "$SIDE_HASH7" &&
 	git merge -m "merge HASH7 and SIDE_HASH7" "$HASH7" &&
+	SIDE_HASH8=$(git rev-parse --verify HEAD) &&
 	add_line_into_file "9: last line in side branch" hello2 &&
 	SIDE_HASH9=$(git rev-parse --verify HEAD)
 '
@@ -163,14 +164,50 @@ test_expect_success 'extra commits to get multiple merge bases' '
 test_expect_success 'good merge base when side is good and other is bad' '
 	git bisect start "$HASH8" "$SIDE_HASH9" > my_bisect_log.txt &&
 	test_i18ngrep "merge base must be tested" my_bisect_log.txt &&
-	grep $HASH7 my_bisect_log.txt
+	grep $HASH7 my_bisect_log.txt &&
+	git bisect reset
 '
 
 test_expect_success 'good merge base when side is bad and other is good' '
 	git bisect start "$SIDE_HASH9" "$HASH8" > my_bisect_log.txt &&
 	test_i18ngrep "merge base must be tested" my_bisect_log.txt &&
-	grep $HASH7 my_bisect_log.txt
+	grep $HASH7 my_bisect_log.txt &&
+	git bisect reset
 '
+
+
+# This adds some more commits to have multiple merge bases
+#
+# H1-H2-H3-H4-H5-H6-H7-H8-H9-H10  <--other
+#            \           /  /
+#             S5-S6-S7-S8-S9-S10  <--side
+HASH9=
+test_expect_success 'extra commits to get multiple merge bases merged in other' '
+	git checkout "$HASH8" &&
+	git merge -m "merge HASH8 and SIDE_HASH8" "$SIDE_HASH8" &&
+	HASH9=$(git rev-parse --verify HEAD) &&
+	git merge -m "merge HASH9 and SIDE_HASH9" "$SIDE_HASH9" &&
+	HASH10=$(git rev-parse --verify HEAD) &&
+	git checkout "$SIDE_HASH9" &&
+	add_line_into_file "8: last line in main branch" hello &&
+	SIDE_HASH10=$(git rev-parse --verify HEAD)
+'
+
+test_expect_success 'good merge base when S10 is good and H10 is bad' '
+	git bisect start "$HASH10" "$SIDE_HASH10" > my_bisect_log.txt &&
+	test_i18ngrep "merge base must be tested" my_bisect_log.txt &&
+	grep $SIDE_HASH9 my_bisect_log.txt &&
+	git bisect reset
+'
+
+test_expect_success 'good merge base when S10 is bad and H10 is good' '
+	git bisect start "$SIDE_HASH10" "$HASH10" > my_bisect_log.txt &&
+	test_i18ngrep "merge base must be tested" my_bisect_log.txt &&
+	grep $SIDE_HASH9 my_bisect_log.txt &&
+	git bisect reset
+'
+
+
 
 
 # This creates a few more commits (A and B) to test "siblings" cases
