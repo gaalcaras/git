@@ -144,13 +144,11 @@ test_expect_success 'bad merge base when good and bad are siblings' '
 	git bisect reset
 '
 
-# This creates adds some more commits to have multiple merge bases
+# This adds some more commits to have multiple merge bases
 #
 # H1-H2-H3-H4-H5-H6-H7-H8  <--other
 #            \        \
 #             S5-S6-S7-S8-S9  <--side
-#
-# SENTINEL
 HASH8=
 test_expect_success 'extra commits to get multiple merge bases' '
 	git checkout "$HASH7" &&
@@ -162,6 +160,17 @@ test_expect_success 'extra commits to get multiple merge bases' '
 	SIDE_HASH9=$(git rev-parse --verify HEAD)
 '
 
+test_expect_success 'good merge base when side is good and other is bad' '
+	git bisect start "$HASH8" "$SIDE_HASH9" > my_bisect_log.txt &&
+	test_i18ngrep "merge base must be tested" my_bisect_log.txt &&
+	grep $HASH7 my_bisect_log.txt
+'
+
+test_expect_success 'good merge base when side is bad and other is good' '
+	git bisect start "$SIDE_HASH9" "$HASH8" > my_bisect_log.txt &&
+	test_i18ngrep "merge base must be tested" my_bisect_log.txt &&
+	grep $HASH7 my_bisect_log.txt
+'
 
 
 # This creates a few more commits (A and B) to test "siblings" cases
